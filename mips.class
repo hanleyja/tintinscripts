@@ -1,0 +1,84 @@
+#class mips open;
+
+#nop ==> Variable Init. <==
+#var mipsenabled 0;
+#nop TODO: Make this randomly generated
+#var mipscode 76223;
+#var mipsport 50007;
+#var hpcur 0;
+#var hpmax 0;
+#var spcur 0;
+#var spmax 0;
+#var roomshort 0;
+#var {mipssep} {-=-};
+
+#nop user-level aliases
+#alias mipson
+{
+    #var mipsenabled 1;
+    3klient $mipscode~TinTin;
+    #ticker {mipsupdate} {#sys echo hpcur:$hpcur $mipssep hpmax:$hpmax $mipssep spcur:$spcur $mipssep spmax:$spmax $mipssep roomshort:$roomshort | nc localhost $mipsport} {1};
+}
+
+#alias mipsoff
+{
+    #var mipsenabled 0;
+    3klient off
+    #unticker {mipsupdate};
+}
+
+#nop parsing stuff
+#action {%*Welcome%*}
+{
+    #if {$mipsenabled == 0}
+    {
+        mipson
+    }
+}
+
+#nop Line Format: #K%+SECCODE+CHARCOUNT+LITERAL+DATA
+#nop action {#K%%$mipscode%d%?%?%?%*}
+#action {#K%%$mipscode{[0-9][0-9][0-9]}{[A-Z][A-Z][A-Z]}%*}
+{
+    #if {$mipsenabled == 1}
+    {
+        #switch {"%2"}
+        {
+            #case "AAC"
+            {
+                #nop Time-till-reboot;
+                #showme {Amount of time until reboot: %3};
+                #line gag;
+            };
+            #case "AAF"
+            {
+                #nop Uptime;
+                #showme {Uptime: %3};
+                #line gag;
+            };
+            #case "FFF"
+            {
+                #nop Composite -> A140~B149~C1258~D1258;
+                #nop #regex {"%3"} {A%d~B%d~C%d~D%d} {#var hpcur &1;#var hpmax &2;#var spcur &3;#var spmax &4;};
+                #regex {"%3"} {A%d~B%d~C%d~D%d} {#var hpcur &1;#var hpmax &2;#var spcur &3;#var spmax &4;};
+                #nop showme HP: $hpcur / $hpmax   SP: $spcur / $spmax ;
+                #line gag;
+            };
+            #case "BAD"
+            {
+                #nop Room Short
+                #var roomshort %3;
+                #line gag;
+            };
+        }
+    }
+}
+
+
+#nop #K%  76203 019 AAF0w:3d:11h:0m:49s
+#nop #K%  76203 016 AAC1d:16h:6m:36s
+
+
+
+#class mips close;
+
